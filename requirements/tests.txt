@@ -1,0 +1,15 @@
+codecov
+cython
+dask
+flaky
+matplotlib
+mock
+numpy
+pandas
+pytest
+pytest-cov
+scipy
+xarray
+pillow
+# Remove when Anaconda updates to a newer ipykernel
+ipython_genutils
