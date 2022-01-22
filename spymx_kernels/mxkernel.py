@@ -45,12 +45,8 @@
 from types import ModuleType
 import json
 import ast
-import spyder
 
-if spyder.version_info < (3, 3, 0):
-    from spyder.utils.ipython.spyder_kernel import SpyderKernel
-else:
-    from spyder_kernels.console.kernel import SpyderKernel
+from spyder_kernels.console.kernel import SpyderKernel
 
 from .utility.tupleencoder import hinted_tuple_hook
 from .utility.typeutil import (
@@ -63,27 +59,25 @@ class ModelxKernel(SpyderKernel):
     def __init__(self, *args, **kwargs):
         super(ModelxKernel, self).__init__(*args, **kwargs)
 
-        if spyder.version_info > (4,):
+        for call_id, handler in [
+            ('mx_get_modellist', self.mx_get_modellist),
+            ('mx_get_adjacent', self.mx_get_adjacent),
+            ('mx_new_model', self.mx_new_model),
+            ('mx_read_model', self.mx_read_model),
+            ('mx_del_object', self.mx_del_object),
+            ('mx_del_model', self.mx_del_model),
+            ('mx_write_model', self.mx_write_model),
+            ('mx_import_names', self.mx_import_names),
+            ('mx_get_value', self.mx_get_value),
+            ('mx_get_node', self.mx_get_node),
+            ('mx_get_attrdict', self.mx_get_attrdict),
+            ('mx_get_value_info', self.mx_get_value_info)
 
-            for call_id, handler in [
-                ('mx_get_modellist', self.mx_get_modellist),
-                ('mx_get_adjacent', self.mx_get_adjacent),
-                ('mx_new_model', self.mx_new_model),
-                ('mx_read_model', self.mx_read_model),
-                ('mx_del_object', self.mx_del_object),
-                ('mx_del_model', self.mx_del_model),
-                ('mx_write_model', self.mx_write_model),
-                ('mx_import_names', self.mx_import_names),
-                ('mx_get_value', self.mx_get_value),
-                ('mx_get_node', self.mx_get_node),
-                ('mx_get_attrdict', self.mx_get_attrdict),
-                ('mx_get_value_info', self.mx_get_value_info)
-
-            ]:
-                self.frontend_comm.register_call_handler(
-                    call_id,
-                    handler
-                )
+        ]:
+            self.frontend_comm.register_call_handler(
+                call_id,
+                handler
+            )
 
     def get_modelx(self):
         from modelx.core import mxsys
@@ -291,11 +285,7 @@ class ModelxKernel(SpyderKernel):
         else:
             data = None
 
-        if spyder.version_info > (4,):
-            return data
-        else:
-            self.send_mx_msg("get_attrdict", data=data)
-
+        return data
 
     def mx_get_modellist(self):
         """Returns a list of model info.
@@ -317,10 +307,7 @@ class ModelxKernel(SpyderKernel):
 
         data.insert(0, cur)
 
-        if spyder.version_info > (4,):
-            return data
-        else:
-            self.send_mx_msg("modellist", data=data)
+        return data
 
     def mx_get_codelist(self, fullname):
         import modelx as mx
@@ -365,10 +352,7 @@ class ModelxKernel(SpyderKernel):
         data = node._get_attrdict(recursive=False, extattrs=['formula'])
         data["value"] = self._to_sendval(data["value"])
 
-        if spyder.version_info > (4,):
-            return data
-        else:
-            self.send_mx_msg(msgtype, content=None, data=data)
+        return data
 
     def mx_get_adjacent(self, msgtype, obj: str,
                         jsonargs: str, adjacency: str):
@@ -385,11 +369,7 @@ class ModelxKernel(SpyderKernel):
         for node in attrs:
             node["value"] = self._to_sendval(node["value"])
 
-        if spyder.version_info > (4,):
-            return attrs
-        else:
-            content = {'mx_obj': obj, 'mx_args': args, 'mx_adjacency': adjacency}
-            self.send_mx_msg(msgtype, content=content, data=attrs)
+        return attrs
 
     def mx_get_value_info(self, model: str):
 
@@ -412,10 +392,7 @@ class ModelxKernel(SpyderKernel):
             val["refs"] = list(ref._get_attrdict() for ref in val["refs"])
             i += 1
 
-        if spyder.version_info > (4,):
-            return values
-        else:
-            self.send_mx_msg('get_value_info', content=None, data=values)
+        return values
 
     def _to_sendval(self, value):
         import modelx
@@ -475,10 +452,7 @@ class ModelxKernel(SpyderKernel):
                 else:
                     raise KeyError("value for %s not found" % argstr)
 
-        if spyder.version_info > (4,):
-            return value
-        else:
-            self.send_mx_msg(msgtype, content=None, data=value)
+        return value
 
     def send_mx_msg(self, mx_msgtype, content=None, data=None):
         """

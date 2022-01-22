@@ -44,7 +44,6 @@
 
 import sys
 import os.path
-import spyder
 
 
 def main():
@@ -67,21 +66,15 @@ def main():
     # executed in interactive mode):
     sys.path.insert(0, '')
 
-    if spyder.version_info >= (3, 3, 0):
-        from spyder_kernels.console.start import import_spydercustomize
-        # Import our customizations into the kernel
-        import_spydercustomize()
+    from spyder_kernels.console.start import import_spydercustomize
+    # Import our customizations into the kernel
+    import_spydercustomize()
 
     # Fire up the kernel instance.
     from ipykernel.kernelapp import IPKernelApp
 
-    if spyder.version_info < (3, 3, 0):
-        from spyder.utils.ipython.start_kernel import kernel_config, varexp
-    else:
-        from spyder_kernels.console.start import kernel_config, varexp
-
+    from spyder_kernels.console.start import kernel_config, varexp
     from spymx_kernels.mxkernel import ModelxKernel
-
 
     kernel = IPKernelApp.instance()
     kernel.kernel_class = ModelxKernel
