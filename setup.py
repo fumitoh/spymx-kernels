@@ -22,7 +22,7 @@ with io.open('README.md', encoding='utf-8') as f:
     LONG_DESCRIPTION = f.read()
 
 
-def get_version(module='spyder_kernels'):
+def get_version(module='spymx_kernels'):
     """Get version."""
     with open(os.path.join(HERE, module, '_version.py'), 'r') as f:
         data = f.read()
@@ -36,15 +36,7 @@ def get_version(module='spyder_kernels'):
 
 
 REQUIREMENTS = [
-    'backports.functools-lru-cache; python_version<"3"',
-    'cloudpickle',
-    'ipykernel<5; python_version<"3"',
-    'ipykernel>=5.3.0; python_version>="3"',
-    'ipython<6; python_version<"3"',
-    'ipython>=7.6.0; python_version>="3"',
-    'jupyter-client>=5.3.4,<7',
-    'pyzmq>=17',
-    'wurlitzer>=1.0.3;platform_system!="Windows"',
+    'spyder-kernels>=1.8.1'
 ]
 
 TEST_REQUIREMENTS = [
@@ -64,15 +56,15 @@ TEST_REQUIREMENTS = [
 ]
 
 setup(
-    name='spyder-kernels',
+    name='spymx-kernels',
     version=get_version(),
-    keywords='spyder jupyter kernel ipython console',
-    url='https://github.com/spyder-ide/spyder-kernels',
-    download_url="https://www.spyder-ide.org/#fh5co-download",
-    license='MIT',
-    author='Spyder Development Team',
-    author_email="spyderlib@googlegroups.com",
-    description="Jupyter kernels for Spyder's console",
+    keywords='modelx spyder jupyter kernel ipython console',
+    url='https://github.com/fumitoh/spymx-kernels',
+    download_url="https://pypi.org/project/spymx-kernels",
+    license='LGPLv3',
+    author='Fumito Hamamura',
+    author_email="fumito.ham@gmail.com",
+    description="Jupyter kernels for Spyder plugin for modelx",
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     packages=find_packages(exclude=['docs', '*tests']),
@@ -84,10 +76,8 @@ setup(
         'Framework :: Jupyter',
         'Framework :: IPython',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',

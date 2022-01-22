@@ -1,4 +1,3 @@
-include AUTHORS.txt
-include CHANGELOG.md
 include LICENSE.txt
+include LICENSE.GPL.txt
 include README.md
