@@ -52,8 +52,8 @@ if spyder.version_info < (3, 3, 0):
 else:
     from spyder_kernels.console.kernel import SpyderKernel
 
-from spyder_modelx.utility.tupleencoder import hinted_tuple_hook
-from spyder_modelx.utility.typeutil import (
+from .utility.tupleencoder import hinted_tuple_hook
+from .utility.typeutil import (
     is_instance_of,
     is_numpy_number, numpy_to_py)
 
