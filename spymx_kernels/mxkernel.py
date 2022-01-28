@@ -46,6 +46,7 @@ from types import ModuleType
 import json
 import ast
 
+import spyder_kernels
 from spyder_kernels.console.kernel import SpyderKernel
 
 from .utility.tupleencoder import hinted_tuple_hook
@@ -53,6 +54,7 @@ from .utility.typeutil import (
     is_instance_of,
     is_numpy_number, numpy_to_py)
 
+_spykern_ver = tuple(int(i) for i in spyder_kernels.__version__.split(".")[:3])
 
 class ModelxKernel(SpyderKernel):
 
@@ -142,8 +144,13 @@ class ModelxKernel(SpyderKernel):
 
         name = varname or obj.name
 
-        if replace_existing or name not in self._mglobals():
-            self._mglobals()[name] = obj
+        if _spykern_ver > (2, 2):
+            glbs = self.shell.user_ns
+        else:
+            glbs = self._mglobals()
+
+        if replace_existing or name not in glbs:
+            glbs[name] = obj
             return True
         else:
             return False
@@ -208,7 +215,7 @@ class ModelxKernel(SpyderKernel):
         if not name:
             name = None
 
-        ns = self._mglobals()
+        ns = self.shell.user_ns if _spykern_ver > (2, 2) else self._mglobals()
         if "__mx_temp" in ns:
             formula = ns["__mx_temp"]
             del ns["__mx_temp"]
@@ -227,7 +234,7 @@ class ModelxKernel(SpyderKernel):
         import modelx as mx
 
         obj = mx.get_object(fullname)
-        ns = self._mglobals()
+        ns = self.shell.user_ns if _spykern_ver > (2, 2) else self._mglobals()
         if "__mx_temp" in ns:
             formula = ns["__mx_temp"]
             del ns["__mx_temp"]
