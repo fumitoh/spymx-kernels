@@ -15,7 +15,7 @@
 # License along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 # The source code contains parts copied and modified from Spyder project:
-# https://github.com/spyder-ide/spyder
+# https://github.com/spyder-ide/spyder-kernels
 # See below for the original copyright notice.
 
 #
