@@ -160,7 +160,10 @@ class ModelxKernel(SpyderKernel):
                         import_children, replace_existing):
         import modelx as mx
         from modelx.core.space import ItemSpace
-        from modelx.core.spacecontainer import BaseSpaceContainer
+        if mx.VERSION > (0, 19):
+            from modelx.core.parent import BaseParent
+        else:
+            from modelx.core.spacecontainer import BaseSpaceContainer as BaseParent
         from modelx.core.space import BaseSpace
         from modelx.core.reference import ReferenceProxy
 
@@ -178,7 +181,7 @@ class ModelxKernel(SpyderKernel):
             else:
                 self._define_var(parent, replace_existing=replace_existing)
 
-        if import_children and isinstance(obj, BaseSpaceContainer):
+        if import_children and isinstance(obj, BaseParent):
             for child in obj.spaces.values():
                 self._define_var(child, replace_existing=replace_existing)
 
