@@ -46,6 +46,7 @@ from types import ModuleType
 import json
 import ast
 
+import ipykernel
 import spyder_kernels
 from spyder_kernels.console.kernel import SpyderKernel
 
@@ -482,6 +483,10 @@ class ModelxKernel(SpyderKernel):
             things). Will arrive as cloudpickled bytes in `.buffers[0]`.
         """
         import cloudpickle
+        if ipykernel.version_info > (6,):
+            parent = self.get_parent(channel="shell")
+        else:
+            parent = self._parent_header
 
         if content is None:
             content = {}
@@ -491,5 +496,5 @@ class ModelxKernel(SpyderKernel):
             'modelx_msg',
             content=content,
             buffers=[cloudpickle.dumps(data, protocol=2)],
-            parent=self._parent_header)
+            parent=parent)
 
