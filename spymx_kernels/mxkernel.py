@@ -411,12 +411,13 @@ class ModelxKernel(SpyderKernel):
         from modelx.core.cells import Interface
 
         if mxver < (0, 18, 0):
-            from modelx.io.baseio import BaseDataClient as dataspec
+            from modelx.io.baseio import BaseDataClient as iospec
+        elif mxver < (0, 20, 0):
+            from modelx.io.baseio import BaseDataSpec as iospec
         else:
-            from modelx.io.baseio import BaseDataSpec as dataspec
+            from modelx.io.baseio import BaseIOSpec as iospec
 
-        if isinstance(value, (Interface, str, dataspec,
-                              ModuleType)):
+        if isinstance(value, (Interface, str, iospec, ModuleType)):
             return repr(value)
 
         elif any(
