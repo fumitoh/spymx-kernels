@@ -45,61 +45,62 @@
 from types import ModuleType
 import json
 import ast
+import logging
 
+import cloudpickle
 import ipykernel
 import spyder_kernels
 from spyder_kernels.console.kernel import SpyderKernel
+from spyder_kernels.comms.decorators import comm_handler
 
-from .utility.tupleencoder import hinted_tuple_hook
-from .utility.typeutil import (
+from spymx_kernels.utility.tupleencoder import hinted_tuple_hook
+from spymx_kernels.utility.typeutil import (
     is_instance_of,
     is_numpy_number, numpy_to_py)
 
 _spykern_ver = tuple(int(i) for i in spyder_kernels.__version__.split(".")[:3])
+
+logger = logging.getLogger(__name__)
+
+# Modified from spyder_kernels\comms\decorators.py in spyder-kernels 3.0.3
+def register_class_comm_handlers(instance, cls, frontend_comm):
+    """
+    Registers an instance whose methods have been marked with comm_handler.
+    """
+    for method_name in cls.__dict__:
+        method = getattr(instance, method_name)
+        if hasattr(method, '_is_comm_handler'):
+            frontend_comm.register_call_handler(
+                method_name, method)
 
 class ModelxKernel(SpyderKernel):
 
     def __init__(self, *args, **kwargs):
         super(ModelxKernel, self).__init__(*args, **kwargs)
 
-        for call_id, handler in [
-            ('mx_get_modellist', self.mx_get_modellist),
-            ('mx_get_adjacent', self.mx_get_adjacent),
-            ('mx_new_model', self.mx_new_model),
-            ('mx_read_model', self.mx_read_model),
-            ('mx_del_object', self.mx_del_object),
-            ('mx_del_model', self.mx_del_model),
-            ('mx_write_model', self.mx_write_model),
-            ('mx_import_names', self.mx_import_names),
-            ('mx_get_value', self.mx_get_value),
-            ('mx_get_node', self.mx_get_node),
-            ('mx_get_attrdict', self.mx_get_attrdict),
-            ('mx_get_value_info', self.mx_get_value_info)
+        # Base classes handlers are not registered in SpyderKernel.__init__
+        register_class_comm_handlers(self, SpyderKernel, self.frontend_comm)
 
-        ]:
-            self.frontend_comm.register_call_handler(
-                call_id,
-                handler
-            )
 
     def get_modelx(self):
         from modelx.core import mxsys
         return mxsys
 
+    @comm_handler
     def mx_new_model(self, name=None, define_var=False, varname=''):
         import modelx as mx
         model = mx.new_model(name)
         if define_var:
             self._define_var(model, varname)
-        self.send_mx_msg("mxupdated")
 
+    @comm_handler
     def mx_read_model(self, modelpath, name, define_var, varname):
         import modelx as mx
         model = mx.read_model(modelpath, name)
         if define_var:
             self._define_var(model, varname)
-        self.send_mx_msg("mxupdated")
 
+    @comm_handler
     def mx_write_model(self, model, modelpath, backup, zipmodel):
         import modelx as mx
         if zipmodel:
@@ -107,6 +108,7 @@ class ModelxKernel(SpyderKernel):
         else:
             mx.write_model(mx.get_models()[model], modelpath, backup)
 
+    @comm_handler
     def mx_new_space(self, model, parent, name, bases, define_var, varname):
         import modelx as mx
 
@@ -129,17 +131,15 @@ class ModelxKernel(SpyderKernel):
         if define_var:
             self._define_var(space, varname)
 
-        self.send_mx_msg("mxupdated")
-
+    @comm_handler
     def mx_del_object(self, parent, name):
         import modelx as mx
         mx.get_object(parent).__delattr__(name)
-        self.send_mx_msg("mxupdated")
 
+    @comm_handler
     def mx_del_model(self, name):
         import modelx as mx
         mx.get_models()[name].close()
-        self.send_mx_msg("mxupdated")
 
     def _define_var(self, obj, varname=None, replace_existing=True):
 
@@ -156,6 +156,7 @@ class ModelxKernel(SpyderKernel):
         else:
             return False
 
+    @comm_handler
     def mx_import_names(self, fullname,
                         import_selected,
                         import_children, replace_existing):
@@ -195,9 +196,10 @@ class ModelxKernel(SpyderKernel):
                                  varname=name,
                                  replace_existing=replace_existing)
 
-        self.send_mx_msg("mxupdated")
+        # self.send_mx_msg("mxupdated")
 
-    def mx_new_cells(self, model, parent, name, define_var, varname):
+    @comm_handler
+    def mx_new_cells(self, model, parent, name, define_var, varname, formula):
         """
         If name is blank and formula is blank, cells is auto-named.
         If name is blank and formula is func def, name is func name.
@@ -219,11 +221,7 @@ class ModelxKernel(SpyderKernel):
         if not name:
             name = None
 
-        ns = self.shell.user_ns if _spykern_ver > (2, 2) else self._mglobals()
-        if "__mx_temp" in ns:
-            formula = ns["__mx_temp"]
-            del ns["__mx_temp"]
-        else:
+        if not formula:     # nulls str
             formula = None
 
         cells = parent.new_cells(
@@ -232,21 +230,15 @@ class ModelxKernel(SpyderKernel):
         )
         if define_var:
             self._define_var(cells, varname)
-        self.send_mx_msg("mxupdated")
 
-    def mx_set_formula(self, fullname):
+
+    @comm_handler
+    def mx_set_formula(self, fullname, formula):
         import modelx as mx
 
         obj = mx.get_object(fullname)
-        ns = self.shell.user_ns if _spykern_ver > (2, 2) else self._mglobals()
-        if "__mx_temp" in ns:
-            formula = ns["__mx_temp"]
-            del ns["__mx_temp"]
-        else:
-            formula = None
-
         obj.set_formula(formula)
-        self.send_mx_msg("mxupdated")
+
 
     def _get_or_create_model(self, model):
         """
@@ -260,26 +252,8 @@ class ModelxKernel(SpyderKernel):
         else:
             return mx.cur_model() if mx.cur_model() else mx.new_model()
 
-    def mx_get_object(self, msgtype, fullname=None, attrs=None, recursive=False):
-        # TODO: Replace with mx_get_attrdict
 
-        import modelx as mx
-        if fullname is None:
-            obj = mx.cur_model()
-        else:
-            try:
-                obj = mx.get_object(fullname, as_proxy=True)
-            except NameError:
-                obj = None
-
-        if obj is not None:
-            data = obj._get_attrdict(attrs, recursive=recursive)
-        else:
-            data = None
-
-        self.send_mx_msg(msgtype, data=data)
-
-
+    @comm_handler
     def mx_get_attrdict(self, fullname=None, attrs=None, recursive=False):
 
         import modelx as mx
@@ -296,8 +270,9 @@ class ModelxKernel(SpyderKernel):
         else:
             data = None
 
-        return data
+        return cloudpickle.dumps(data)
 
+    @comm_handler
     def mx_get_modellist(self):
         """Returns a list of model info.
 
@@ -320,6 +295,7 @@ class ModelxKernel(SpyderKernel):
 
         return data
 
+    @comm_handler
     def mx_get_codelist(self, fullname):
         import modelx as mx
 
@@ -329,7 +305,7 @@ class ModelxKernel(SpyderKernel):
         except:
             data = None
 
-        self.send_mx_msg('codelist', data=data)
+        return data
 
     def mx_get_evalresult(self, msgtype, data):
 
@@ -351,21 +327,26 @@ class ModelxKernel(SpyderKernel):
 
         self._do_publish_pdb_state = False
 
-    def mx_get_node(self, msgtype, fullname: str, argstr: str):
+    @comm_handler
+    def mx_get_node(self, fullname: str, args):
         import modelx as mx
         from modelx.core.reference import ReferenceProxy
         from modelx.core.base import Interface
 
-        args = ast.literal_eval(argstr)
+        args = cloudpickle.loads(args)
+
+        # args = ast.literal_eval(argstr)
         obj = mx.get_object(fullname, as_proxy=True)
 
         node = obj.node(*args)
         data = node._get_attrdict(recursive=False, extattrs=['formula'])
         data["value"] = self._to_sendval(data["value"])
 
-        return data
+        # logger.debug(f"mx_get_value{data}")
+        return cloudpickle.dumps(data)
 
-    def mx_get_adjacent(self, msgtype, obj: str,
+    @comm_handler
+    def mx_get_adjacent(self, obj: str,
                         jsonargs: str, adjacency: str):
 
         import modelx as mx
@@ -380,8 +361,9 @@ class ModelxKernel(SpyderKernel):
         for node in attrs:
             node["value"] = self._to_sendval(node["value"])
 
-        return attrs
+        return cloudpickle.dumps(attrs)
 
+    @comm_handler
     def mx_get_value_info(self, model: str):
 
         import modelx as mx
@@ -440,7 +422,8 @@ class ModelxKernel(SpyderKernel):
         else:
             return value
 
-    def mx_get_value(self, msgtype, fullname: str, argstr: str, calc: bool):
+    @comm_handler
+    def mx_get_value(self, fullname: str, argstr: str, calc: bool):
         """Get value of modelx object
 
         Returns a pair of the value and bool to indicate if the value is just
@@ -464,7 +447,7 @@ class ModelxKernel(SpyderKernel):
                 else:
                     raise KeyError("value for %s not found" % argstr)
 
-        return value
+        return cloudpickle.dumps(value)
 
     def send_mx_msg(self, mx_msgtype, content=None, data=None):
         """
@@ -484,10 +467,7 @@ class ModelxKernel(SpyderKernel):
             things). Will arrive as cloudpickled bytes in `.buffers[0]`.
         """
         import cloudpickle
-        if ipykernel.version_info > (6,):
-            parent = self.get_parent(channel="shell")
-        else:
-            parent = self._parent_header
+        parent = self.get_parent(channel="shell")
 
         if content is None:
             content = {}

@@ -74,7 +74,7 @@ def main():
     from ipykernel.kernelapp import IPKernelApp
 
     from spyder_kernels.console.start import kernel_config, varexp
-    from spymx_kernels.mxkernel import ModelxKernel
+    from spymx_kernels.console.kernel_5 import ModelxKernel
 
     kernel = IPKernelApp.instance()
     kernel.kernel_class = ModelxKernel
