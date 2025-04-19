@@ -48,7 +48,6 @@ import ast
 import logging
 
 import cloudpickle
-import ipykernel
 import spyder_kernels
 from spyder_kernels.console.kernel import SpyderKernel
 from spyder_kernels.comms.decorators import comm_handler
