@@ -51,6 +51,7 @@ import cloudpickle
 import spyder_kernels
 from spyder_kernels.console.kernel import SpyderKernel
 from spyder_kernels.comms.decorators import comm_handler
+from spyder_kernels.utils.nsview import value_to_display
 
 from spymx_kernels.utility.tupleencoder import hinted_tuple_hook
 from spymx_kernels.utility.typeutil import (
@@ -339,7 +340,7 @@ class ModelxKernel(SpyderKernel):
 
         node = obj.node(*args)
         data = node._get_attrdict(recursive=False, extattrs=['formula'])
-        data["value"] = self._to_sendval(data["value"])
+        data["value"] = value_to_display(data["value"])
 
         # logger.debug(f"mx_get_value{data}")
         return cloudpickle.dumps(data)
@@ -358,7 +359,7 @@ class ModelxKernel(SpyderKernel):
             recursive=False, extattrs=['formula']) for node in nodes]
 
         for node in attrs:
-            node["value"] = self._to_sendval(node["value"])
+            node["value"] = value_to_display(node["value"])
 
         return cloudpickle.dumps(attrs)
 
