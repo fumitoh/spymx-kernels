@@ -376,7 +376,7 @@ class ModelxKernel(SpyderKernel):
         while i < size:
             val = values[i]
 
-            val["value"] = self._to_sendval(val["value"])
+            val["value"] = value_to_display(val["value"])
             if val["spec"]:
                 val["spec"] = val["spec"]._get_attrdict()
                 if "value" in val["spec"]:
