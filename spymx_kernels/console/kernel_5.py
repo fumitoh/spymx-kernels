@@ -73,6 +73,7 @@ class ModelxKernel(SpyderKernel):
             ('mx_write_model', self.mx_write_model),
             ('mx_import_names', self.mx_import_names),
             ('mx_get_value', self.mx_get_value),
+            ('mx_eval_node', self.mx_eval_node),
             ('mx_get_node', self.mx_get_node),
             ('mx_get_attrdict', self.mx_get_attrdict),
             ('mx_get_value_info', self.mx_get_value_info)
@@ -333,6 +334,7 @@ class ModelxKernel(SpyderKernel):
         self.send_mx_msg('codelist', data=data)
 
     def mx_get_evalresult(self, msgtype, data):
+        # Replaced by mx_eval_node
 
         begstr = "analyze_"
         endstr = "_setnode"
@@ -351,6 +353,23 @@ class ModelxKernel(SpyderKernel):
             self.send_mx_msg(msgtype, data=None)
 
         self._do_publish_pdb_state = False
+
+    def mx_eval_node(self, expr: str, argstr: str):
+        # Contribution from bakerwy
+        # https://github.com/fumitoh/modelx/discussions/183#discussion-8668563
+
+        import sys
+        user_ns = sys.modules['__main__'].__dict__
+
+        node = eval(f"{expr}.node{argstr}", user_ns, user_ns)
+
+        data = node._get_attrdict(recursive=False, extattrs=['formula'])
+
+        if "value" in data:
+            data["value"] = value_to_display(data["value"])
+
+        return data
+
 
     def mx_get_node(self, msgtype, fullname: str, argstr: str):
         import modelx as mx
