@@ -449,6 +449,25 @@ class ModelxKernel(SpyderKernel):
 
         return cloudpickle.dumps(value)
 
+
+    @comm_handler
+    def mx_eval_node(self, expr: str, argstr: str):
+        # Contribution from bakerwy
+        # https://github.com/fumitoh/modelx/discussions/183#discussion-8668563
+
+        import sys
+        user_ns = sys.modules['__main__'].__dict__
+
+        node = eval(f"{expr}.node{argstr}", user_ns, user_ns)
+
+        data = node._get_attrdict(recursive=False, extattrs=['formula'])
+
+        if "value" in data:
+            data["value"] = value_to_display(data["value"])
+
+        return data
+
+
     def send_mx_msg(self, mx_msgtype, content=None, data=None):
         """
         Publish custom messages to the Spyder frontend.
