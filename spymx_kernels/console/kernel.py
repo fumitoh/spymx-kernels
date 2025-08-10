@@ -342,7 +342,6 @@ class ModelxKernel(SpyderKernel):
         data = node._get_attrdict(recursive=False, extattrs=['formula'])
         data["value"] = value_to_display(data["value"])
 
-        # logger.debug(f"mx_get_value{data}")
         return cloudpickle.dumps(data)
 
     @comm_handler
@@ -465,7 +464,8 @@ class ModelxKernel(SpyderKernel):
         if "value" in data:
             data["value"] = value_to_display(data["value"])
 
-        return data
+        # () becomes [] without cloudpickling
+        return cloudpickle.dumps(data)
 
 
     def send_mx_msg(self, mx_msgtype, content=None, data=None):
