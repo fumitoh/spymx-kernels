@@ -363,6 +363,28 @@ class ModelxKernel(SpyderKernel):
         return cloudpickle.dumps(attrs)
 
     @comm_handler
+    def mx_adj_node(self, obj: str, args, adjacency: str):
+        """Get adjacent nodes with args passed as cloudpickled bytes.
+
+        Same as mx_get_adjacent except that args are serialized by
+        cloudpickle instead of json, so that args needs no conversion,
+        such as numpy numbers to Python builtins.
+        """
+        import modelx as mx
+        from modelx.core.base import Interface
+
+        args = cloudpickle.loads(args)
+        node = mx.get_object(obj).node(*args)
+        nodes = getattr(node, adjacency)
+        attrs = [node._get_attrdict(
+            recursive=False, extattrs=['formula']) for node in nodes]
+
+        for node in attrs:
+            node["value"] = value_to_display(node["value"])
+
+        return cloudpickle.dumps(attrs)
+
+    @comm_handler
     def mx_get_value_info(self, model: str):
 
         import modelx as mx
@@ -445,6 +467,36 @@ class ModelxKernel(SpyderKernel):
                     value = [obj(*args), True]
                 else:
                     raise KeyError("value for %s not found" % argstr)
+
+        return cloudpickle.dumps(value)
+
+    @comm_handler
+    def mx_node_value(self, fullname: str, args, calc: bool):
+        """Get value of a modelx node with args passed as cloudpickled bytes.
+
+        Same as mx_get_value except that args are serialized by
+        cloudpickle instead of a repr string, so that args needs no
+        conversion, such as numpy numbers to Python builtins.
+
+        Returns a pair of the value and bool to indicate if the value is just
+        calculated
+        """
+        import modelx as mx
+        from modelx.core.reference import ReferenceProxy
+        from modelx.core.base import Interface
+
+        args = cloudpickle.loads(args)
+        obj = mx.get_object(fullname, as_proxy=True)
+        if isinstance(obj, ReferenceProxy):
+            value = [mx.get_object(fullname), False]
+        elif isinstance(obj, Interface):
+            if args in obj:
+                value = [obj(*args), False]
+            else:
+                if calc:
+                    value = [obj(*args), True]
+                else:
+                    raise KeyError("value for %s not found" % repr(args))
 
         return cloudpickle.dumps(value)
 
