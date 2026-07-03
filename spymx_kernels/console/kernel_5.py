@@ -46,6 +46,7 @@ from types import ModuleType
 import json
 import ast
 
+import cloudpickle
 import ipykernel
 import spyder_kernels
 from spyder_kernels.console.kernel import SpyderKernel
@@ -66,6 +67,8 @@ class ModelxKernel(SpyderKernel):
         for call_id, handler in [
             ('mx_get_modellist', self.mx_get_modellist),
             ('mx_get_adjacent', self.mx_get_adjacent),
+            ('mx_adj_node', self.mx_adj_node),
+            ('mx_node_value', self.mx_node_value),
             ('mx_new_model', self.mx_new_model),
             ('mx_read_model', self.mx_read_model),
             ('mx_del_object', self.mx_del_object),
@@ -387,11 +390,39 @@ class ModelxKernel(SpyderKernel):
 
     def mx_get_adjacent(self, msgtype, obj: str,
                         jsonargs: str, adjacency: str):
+        """Get adjacent nodes with args passed as a json string.
 
+        Superseded by mx_adj_node introduced in spymx-kernels 0.3.0,
+        which receives args as cloudpickled bytes. This method is kept
+        for spyder-modelx 0.15.0 and earlier, and for Spyder versions
+        earlier than 4, where spyder-modelx calls this method through
+        code execution with args embedded in a code string.
+        """
         import modelx as mx
         from modelx.core.base import Interface
 
         args = json.loads(jsonargs, object_hook=hinted_tuple_hook)
+        node = mx.get_object(obj).node(*args)
+        nodes = getattr(node, adjacency)
+        attrs = [node._get_attrdict(
+            recursive=False, extattrs=['formula']) for node in nodes]
+
+        for node in attrs:
+            node["value"] = value_to_display(node["value"])
+
+        return attrs
+
+    def mx_adj_node(self, obj: str, args, adjacency: str):
+        """Get adjacent nodes with args passed as cloudpickled bytes.
+
+        Same as mx_get_adjacent except that args are serialized by
+        cloudpickle instead of json, so that args needs no conversion,
+        such as numpy numbers to Python builtins.
+        """
+        import modelx as mx
+        from modelx.core.base import Interface
+
+        args = cloudpickle.loads(args)
         node = mx.get_object(obj).node(*args)
         nodes = getattr(node, adjacency)
         attrs = [node._get_attrdict(
@@ -466,6 +497,13 @@ class ModelxKernel(SpyderKernel):
         Returns a pair of the value and bool to indicate if the value is just
         calculated
 
+        For MxAnalyzer's value view, superseded by mx_node_value
+        introduced in spymx-kernels 0.3.0, which receives args as
+        cloudpickled bytes; spyder-modelx 0.15.0 and earlier use this
+        method for that purpose, as do later versions on Spyder
+        versions earlier than 4, where args are embedded in a code
+        string. This method also continues to serve MxDataViewer, as
+        its args are entered by the user as a literal string.
         """
         import modelx as mx
         from modelx.core.reference import ReferenceProxy
@@ -483,6 +521,35 @@ class ModelxKernel(SpyderKernel):
                     value = [obj(*args), True]
                 else:
                     raise KeyError("value for %s not found" % argstr)
+
+        return value
+
+    def mx_node_value(self, fullname: str, args, calc: bool):
+        """Get value of a modelx node with args passed as cloudpickled bytes.
+
+        Same as mx_get_value except that args are serialized by
+        cloudpickle instead of a repr string, so that args needs no
+        conversion, such as numpy numbers to Python builtins.
+
+        Returns a pair of the value and bool to indicate if the value is just
+        calculated
+        """
+        import modelx as mx
+        from modelx.core.reference import ReferenceProxy
+        from modelx.core.base import Interface
+
+        args = cloudpickle.loads(args)
+        obj = mx.get_object(fullname, as_proxy=True)
+        if isinstance(obj, ReferenceProxy):
+            value = [mx.get_object(fullname), False]
+        elif isinstance(obj, Interface):
+            if args in obj:
+                value = [obj(*args), False]
+            else:
+                if calc:
+                    value = [obj(*args), True]
+                else:
+                    raise KeyError("value for %s not found" % repr(args))
 
         return value
 
