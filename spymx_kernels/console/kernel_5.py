@@ -390,7 +390,14 @@ class ModelxKernel(SpyderKernel):
 
     def mx_get_adjacent(self, msgtype, obj: str,
                         jsonargs: str, adjacency: str):
+        """Get adjacent nodes with args passed as a json string.
 
+        Superseded by mx_adj_node introduced in spymx-kernels 0.3.0,
+        which receives args as cloudpickled bytes. This method is kept
+        for spyder-modelx 0.15.0 and earlier, and for Spyder versions
+        earlier than 4, where spyder-modelx calls this method through
+        code execution with args embedded in a code string.
+        """
         import modelx as mx
         from modelx.core.base import Interface
 
@@ -490,6 +497,13 @@ class ModelxKernel(SpyderKernel):
         Returns a pair of the value and bool to indicate if the value is just
         calculated
 
+        For MxAnalyzer's value view, superseded by mx_node_value
+        introduced in spymx-kernels 0.3.0, which receives args as
+        cloudpickled bytes; spyder-modelx 0.15.0 and earlier use this
+        method for that purpose, as do later versions on Spyder
+        versions earlier than 4, where args are embedded in a code
+        string. This method also continues to serve MxDataViewer, as
+        its args are entered by the user as a literal string.
         """
         import modelx as mx
         from modelx.core.reference import ReferenceProxy
