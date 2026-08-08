@@ -25,6 +25,21 @@ from spyder_kernels.console.start import import_spydercustomize
 from spyder_kernels.console.start import kernel_config
 from spyder_kernels.console.start import varexp
 
+try:
+    # spyder-kernels 3.1.0 and later define SpyderKernelApp in its own module.
+    # Reusing it, instead of re-deriving one from IPKernelApp here, is what
+    # gives MxConsole kernels the SpyderParentPoller that kills them when
+    # Spyder, their parent process, exits or crashes.
+    # See spyder-ide/spyder#22414.
+    from spyder_kernels.console.kernelapp import SpyderKernelApp
+except ImportError:
+    # spyder-kernels 3.0.x and earlier define SpyderKernelApp inside
+    # start.main(), so it cannot be imported. main() below falls back to
+    # defining an equivalent class. Those versions ship with Spyder 6.0 and
+    # earlier, which do not set SPY_PARENT_PID, so there is no parent process
+    # to poll for anyway.
+    SpyderKernelApp = None
+
 
 
 def main():
@@ -55,29 +70,37 @@ def main():
     from ipykernel.kernelapp import IPKernelApp
     from spymx_kernels.console.kernel import ModelxKernel
 
-    class SpyderKernelApp(IPKernelApp):
+    if SpyderKernelApp is None:
+        # Copied from spyder_kernels/console/start.py in spyder-kernels 3.0.5,
+        # for spyder-kernels earlier than 3.1.0.
+        class KernelApp(IPKernelApp):
 
-        outstream_class = DottedObjectName(
-            'spyder_kernels.console.outstream.TTYOutStream')
+            outstream_class = DottedObjectName(
+                'spyder_kernels.console.outstream.TTYOutStream')
 
-        def init_pdb(self):
-            """
-            This method was added in IPykernel 5.3.1 and it replaces
-            the debugger used by the kernel with a new class
-            introduced in IPython 7.15 during kernel's initialization.
-            Therefore, it doesn't allow us to use our debugger.
-            """
-            pass
+            def init_pdb(self):
+                """
+                This method was added in IPykernel 5.3.1 and it replaces
+                the debugger used by the kernel with a new class
+                introduced in IPython 7.15 during kernel's initialization.
+                Therefore, it doesn't allow us to use our debugger.
+                """
+                pass
 
-        def close(self):
-            """Close the loopback socket."""
-            socket = self.kernel.loopback_socket
-            if socket and not socket.closed:
-                socket.close()
-            return super().close()
+            def close(self):
+                """Close the loopback socket."""
+                socket = self.kernel.loopback_socket
+                if socket and not socket.closed:
+                    socket.close()
+                return super().close()
+    else:
+        # outstream_class, init_pdb and close are all defined the same way
+        # in spyder-kernels' own SpyderKernelApp, so nothing to override.
+        # Only kernel_class is replaced, below, on the instance.
+        KernelApp = SpyderKernelApp
 
     # Fire up the kernel instance.
-    kernel = SpyderKernelApp.instance()
+    kernel = KernelApp.instance()
     kernel.kernel_class = ModelxKernel
     try:
         kernel.config = kernel_config()
