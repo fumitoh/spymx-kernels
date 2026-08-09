@@ -106,6 +106,16 @@ def main():
         kernel.config = kernel_config()
     except:
         pass
+
+    # Re-add current working directory path into sys.path after all of the
+    # import statements, but before initializing the kernel.
+    # SpyderKernel.__init__ snapshots sys.path during initialize(), and Spyder
+    # rebuilds sys.path from that snapshot on every update_syspath call, so
+    # inserting '' after initialize() would be wiped out later.
+    # See fumitoh/spymx-kernels#11.
+    if '' not in sys.path:
+        sys.path.insert(0, '')
+
     kernel.initialize()
 
     # Set our own magics
